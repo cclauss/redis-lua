@@ -1,7 +1,5 @@
 # redis-lua #
 
-[![Build Status](https://travis-ci.org/nrk/redis-lua.png?branch=master)](https://travis-ci.org/nrk/redis-lua)
-
 ## About ##
 
 redis-lua is a pure Lua client library for the Redis advanced key-value database.
@@ -132,7 +130,13 @@ client.get = redis.command('get')           -- client level
 
 - [Lua 5.1 and 5.2](http://www.lua.org/) or [LuaJIT 2.0](http://luajit.org/)
 - [LuaSocket 2.0](http://www.tecgraf.puc-rio.br/~diego/professional/luasocket/)
-- [Telescope](http://telescope.luaforge.net/) (required to run the test suite)
+- [Busted](https://lunarmodules.github.io/busted/) (required to run the test suite)
+
+Run the test suite against a local Redis instance with:
+
+```shell
+busted
+```
 
 ## Links ##
 

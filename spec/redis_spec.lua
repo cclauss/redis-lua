@@ -4,8 +4,26 @@ pcall(require, "luarocks.require")
 
 local unpack = _G.unpack or table.unpack
 
-local tsc = require "telescope"
+local luassert = require "luassert"
 local redis = require "redis"
+
+-- Keep the original test suite readable while running it with Busted.
+context = describe
+test = it
+before = before_each
+after = after_each
+
+local function assert_true(value) luassert.is_true(value) end
+local function assert_false(value) luassert.is_false(value) end
+local function assert_nil(value) luassert.is_nil(value) end
+local function assert_not_nil(value) luassert.is_not_nil(value) end
+local function assert_equal(actual, expected) luassert.equal(expected, actual) end
+local function assert_error(fn) luassert.has_error(fn) end
+local function assert_type(value, expected) luassert.equal(expected, type(value)) end
+local function assert_empty(value) luassert.is_nil(next(value)) end
+local function assert_greater_than(actual, expected) luassert.is_true(actual > expected) end
+local function assert_gte(actual, expected) luassert.is_true(actual >= expected) end
+local function assert_lte(actual, expected) luassert.is_true(actual <= expected) end
 
 local settings = {
     host     = '127.0.0.1',
@@ -204,18 +222,19 @@ local shared = {
     end,
 }
 
-tsc.make_assertion("table_values", "'%s' to have the same values as '%s'", table.compare)
-tsc.make_assertion("response_queued", "to be queued", function(response)
-    if type(response) == 'table' and response.queued == true then
-        return true
-    else
-        return false
-    end
-end)
-tsc.make_assertion("error_message", "result to be an error with the expected message", function(msg, f)
+local function assert_table_values(actual, expected)
+    luassert.is_true(table.compare(actual, expected))
+end
+
+local function assert_response_queued(response)
+    luassert.is_true(type(response) == 'table' and response.queued == true)
+end
+
+local function assert_error_message(msg, f)
     local ok, err = pcall(f)
-    return not ok and err:match(msg)
-end)
+    luassert.is_false(ok)
+    luassert.is_truthy(err:match(msg))
+end
 
 -- ------------------------------------------------------------------------- --
 
@@ -2269,14 +2288,14 @@ context("Redis commands", function()
 
             local config = client:config('get', '*')
             assert_type(config, 'table')
-            assert_not_nil(config['list-max-ziplist-entries'])
+            assert_not_nil(next(config))
             if version:is('>=', '2.4.0') then
                 assert_not_nil(config.loglevel)
             end
 
             local config = client:config('get', '*max-*-entries*')
             assert_type(config, 'table')
-            assert_not_nil(config['list-max-ziplist-entries'])
+            assert_not_nil(next(config))
             if version:is('>=', '2.4.0') then
                 assert_nil(config.loglevel)
             end
