@@ -66,7 +66,7 @@ local client = redis.connect({
 The `timeout` parameter sets the socket timeout in seconds for every operation,
 including connecting. Use `connect_timeout` to limit only the connection step.
 The timeout can be changed later with `client:set_timeout(seconds)`, for
-example to disable it before a blocking command:
+example, to disable it before a blocking command:
 
 ``` lua
 local client = redis.connect({ host = '127.0.0.1', connect_timeout = 5 })
@@ -100,7 +100,7 @@ Note that LuaSec verifies the certificate chain but does not check that the
 certificate matches the hostname you connected to.
 
 It is also possible to connect to a local redis instance using __UNIX domain sockets__
-if LuaSocket has been compiled with them enabled (unfortunately this is not the default):
+if LuaSocket has been compiled with them enabled (unfortunately, this is not the default):
 
 ``` lua
 local redis = require 'redis'
@@ -214,10 +214,10 @@ client.get = redis.command('get')           -- client level
 
 ## Dependencies ##
 
-- [Lua 5.1 and 5.2](http://www.lua.org/) or [LuaJIT 2.0](http://luajit.org/)
-- [LuaSocket 2.0](http://www.tecgraf.puc-rio.br/~diego/professional/luasocket/)
+- [Lua 5.1 thru 5.4](http://www.lua.org/) or [LuaJIT 2.1](http://luajit.org/)
+- [LuaSocket 2.0](https://lunarmodules.github.io/luasocket)
 - [LuaSec](https://github.com/lunarmodules/luasec) (optional, required for TLS connections)
-- [Busted](https://lunarmodules.github.io/busted/) (required to run the test suite)
+- [Busted](https://lunarmodules.github.io/busted) (required to run the test suite)
 
 Run the test suite against a local Redis instance with:
 
