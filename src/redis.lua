@@ -38,6 +38,21 @@ end
 
 local function toboolean(value) return value == 1 end
 
+-- EXISTS (>= 3.0.3) and HSET (>= 4.0) accept variadic arguments and reply
+-- with a count; their original single-key forms keep the boolean reply.
+local function count_or_boolean(single_form_argc)
+    return function(reply, command, ...)
+        local argc = select('#', ...)
+        if argc == 1 and type((...)) == 'table' then
+            argc = #(...)
+        end
+        if argc > single_form_argc then
+            return reply
+        end
+        return reply == 1
+    end
+end
+
 local function sort_request(command, key, params)
     --[[ params = {
         by    = 'weight_*',
@@ -872,7 +887,7 @@ end
 redis.commands = {
     -- commands operating on the key space
     exists           = command('EXISTS', {
-        response = toboolean
+        response = count_or_boolean(1)
     }),
     del              = command('DEL'),
     type             = command('TYPE'),
@@ -1048,7 +1063,7 @@ redis.commands = {
 
     -- commands operating on hashes
     hset             = command('HSET', {        -- >= 2.0
-        response = toboolean
+        response = count_or_boolean(3)
     }),
     hsetnx           = command('HSETNX', {      -- >= 2.0
         response = toboolean

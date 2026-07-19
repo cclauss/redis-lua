@@ -456,6 +456,15 @@ context("Redis commands", function()
 
             assert_true(client:exists('foo'))
             assert_false(client:exists('hoge'))
+
+            if version:is('>=', '3.0.3') then
+                client:set('baz', 'qux')
+
+                assert_equal(client:exists('foo', 'baz'), 2)
+                assert_equal(client:exists('foo', 'foo'), 2)
+                assert_equal(client:exists('foo', 'hoge'), 1)
+                assert_equal(client:exists('hoge', 'fuga'), 0)
+            end
         end)
 
         test("DEL (client:del)", function()
@@ -2088,6 +2097,12 @@ context("Redis commands", function()
             assert_true(client:hset('metavars', 'hoge', 'piyo'))
             assert_equal(client:hget('metavars', 'foo'), 'bar')
             assert_equal(client:hget('metavars', 'hoge'), 'piyo')
+
+            if version:is('>=', '4.0.0') then
+                assert_equal(client:hset('metavars', 'a', '1', 'b', '2'), 2)
+                assert_equal(client:hset('metavars', 'a', '9', 'c', '3'), 1)
+                assert_equal(client:hget('metavars', 'a'), '9')
+            end
 
             assert_error(function()
                 client:set('test', 'foobar')
