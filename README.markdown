@@ -25,20 +25,20 @@ luarocks install redis-lua3
 
 ## Compatibility ##
 
-This library is tested and works with __Lua 5.1__, __Lua 5.2__ (using a compatible
-version of LuaSocket) and __LuaJit 2.0__.
+This library is tested and works with __Lua 5.1__ thru __5.4__ (using a compatible
+version of LuaSocket) and __LuaJit 2.1__.
 
 ## Examples of usage ##
 
 ### Include redis-lua in your script ###
 
-Just require the `redis` module assigning it to a variable:
+Just require the `redis` module, assigning it to a variable:
 
 ``` lua
 local redis = require 'redis'
 ```
 
-### Connect to a redis-server instance and send a PING command ###
+### Connect to a Redis server instance and send a PING command ###
 
 ``` lua
 local redis = require 'redis'
