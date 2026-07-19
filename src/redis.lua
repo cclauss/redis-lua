@@ -399,23 +399,16 @@ local response_reader = function(client, defer_errors)
             return nil
         end
 
+        -- error replies nested in the list (e.g. the reply of an EXEC)
+        -- are kept as { error = message } values instead of raising
         local list = {}
-        local first_error
         if count > 0 then
             for i = 1, count do
-                local reply, response_error = client:read_response(true)
-                list[i] = reply
-                if response_error and not first_error then
-                    first_error = response_error
-                end
+                list[i] = client:read_response(true)
             end
         end
 
-        if first_error and not defer_errors then
-            return client.error(first_error)
-        end
-
-        return list, first_error
+        return list
 
    -- unknown type of reply
     else
@@ -713,9 +706,19 @@ do
             end
         end
 
-        local table_insert = table.insert
         for i, parser in pairs(queued_parsers) do
-            table_insert(replies, i, parser(raw_replies[i]))
+            local reply = raw_replies[i]
+
+            if type(reply) == 'table' and reply.error then
+                replies[i] = reply
+            else
+                local success, parsed = pcall(parser, reply)
+                if success then
+                    replies[i] = parsed
+                else
+                    replies[i] = { error = parsed }
+                end
+            end
         end
 
         return replies, #queued_parsers

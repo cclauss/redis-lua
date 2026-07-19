@@ -158,6 +158,10 @@ local replies = client:transaction(function(t)
 end)
 ```
 
+Commands that fail inside a transaction are reported in the same way as in
+pipelines. The reply for a failed command is a table of the form
+`{ error = message }`.
+
 ### Leverage WATCH / MULTI / EXEC for check-and-set (CAS) operations (Redis > 2.2)
 
 ``` lua
