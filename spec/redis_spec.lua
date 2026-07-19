@@ -374,6 +374,20 @@ context("Client features", function()
         assert_type(replies[10], 'table')
     end)
 
+    test("Drain replies after a pipelined command fails", function()
+        client:set('wrongtype', 'value')
+
+        assert_error_message('WRONGTYPE', function()
+            client:pipeline(function(p)
+                p:get('wrongtype')
+                p:lpush('wrongtype', 'value')
+                p:echo('pipeline-tail')
+            end)
+        end)
+
+        assert_equal(client:echo('fresh-after-pipeline'), 'fresh-after-pipeline')
+    end)
+
     after(function()
         client:quit()
     end)
@@ -2465,6 +2479,20 @@ context("Redis commands", function()
                 end)
             end)
             assert_false(client:exists('metavars'))
+        end)
+
+        test("Drain EXEC replies after a transaction command fails", function()
+            client:set('wrongtype', 'value')
+
+            assert_error_message('WRONGTYPE', function()
+                client:transaction(function(t)
+                    t:get('wrongtype')
+                    t:lpush('wrongtype', 'value')
+                    t:echo('transaction-tail')
+                end)
+            end)
+
+            assert_equal(client:echo('fresh-after-transaction'), 'fresh-after-transaction')
         end)
 
         test("WATCH / MULTI / EXEC abstraction", function()

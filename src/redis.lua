@@ -324,7 +324,7 @@ local multibulk_request = function(client, command, ...)
     client.network.write(client, table.concat(buffer))
 end
 
-local response_reader = function(client)
+local response_reader = function(client, defer_errors)
     local payload = client.network.read(client)
     local prefix, data = payload:sub(1, -#payload), payload:sub(2)
 
@@ -340,7 +340,12 @@ local response_reader = function(client)
 
    -- error reply
     elseif prefix == '-' then
-        return client.error('redis error: ' .. data)
+        local message = 'redis error: ' .. data
+        if defer_errors then
+            return { error = message }, message
+        end
+
+        return client.error(message)
 
    -- integer reply
     elseif prefix == ':' then
@@ -380,12 +385,22 @@ local response_reader = function(client)
         end
 
         local list = {}
+        local first_error
         if count > 0 then
             for i = 1, count do
-                list[i] = client:read_response()
+                local reply, response_error = client:read_response(true)
+                list[i] = reply
+                if response_error and not first_error then
+                    first_error = response_error
+                end
             end
         end
-        return list
+
+        if first_error and not defer_errors then
+            return client.error(first_error)
+        end
+
+        return list, first_error
 
    -- unknown type of reply
     else
@@ -475,12 +490,28 @@ client_prototype.pipeline = function(client, block)
 
     client.network.write(client, table.concat(requests, ''))
 
+    local first_error
     for i = 1, #requests do
-        local reply, parser = client:read_response(), parsers[i]
-        if parser then
-            reply = parser(reply)
+        local reply, response_error = client:read_response(true)
+        local parser = parsers[i]
+
+        if not response_error and parser then
+            local success
+            success, reply = pcall(parser, reply)
+            if not success then
+                response_error = reply
+            end
         end
-        table_insert(replies, i, reply)
+
+        if response_error then
+            first_error = first_error or response_error
+        else
+            replies[i] = reply
+        end
+    end
+
+    if first_error then
+        client.error(first_error)
     end
 
     return replies, #requests
