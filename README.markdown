@@ -73,6 +73,11 @@ local replies = client:pipeline(function(p)
 end)
 ```
 
+An error reply from the server does not abort the pipeline: every command's
+reply is read, and each failed command's slot in `replies` holds a table of
+the form `{ error = message }` instead of a value. Only connection errors
+raise a Lua error.
+
 ### Variadic commands
 
 Some commands such as RPUSH, SADD, SINTER and others have been improved in Redis 2.4

@@ -490,28 +490,20 @@ client_prototype.pipeline = function(client, block)
 
     client.network.write(client, table.concat(requests, ''))
 
-    local first_error
     for i = 1, #requests do
         local reply, response_error = client:read_response(true)
         local parser = parsers[i]
 
         if not response_error and parser then
-            local success
-            success, reply = pcall(parser, reply)
-            if not success then
-                response_error = reply
+            local success, parsed = pcall(parser, reply)
+            if success then
+                reply = parsed
+            else
+                reply = { error = parsed }
             end
         end
 
-        if response_error then
-            first_error = first_error or response_error
-        else
-            replies[i] = reply
-        end
-    end
-
-    if first_error then
-        client.error(first_error)
+        replies[i] = reply
     end
 
     return replies, #requests
