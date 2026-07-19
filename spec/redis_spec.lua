@@ -315,6 +315,25 @@ context("Client initialization", function()
 
         assert_equal(time + timeout, os.time())
     end)
+
+    test("Can specify a timeout for connecting only", function()
+        local time, timeout = os.time(), 2;
+
+        assert_error_message("could not connect to .*:%d+ %[timeout%]", function()
+            redis.connect({ host = '169.254.255.255', connect_timeout = timeout })
+        end)
+
+        assert_equal(time + timeout, os.time())
+
+        -- the connect timeout must not apply to reads: BLPOP blocks for a
+        -- full second here, longer than the connect timeout
+        local client = redis.connect({
+            host            = settings.host,
+            port            = settings.port,
+            connect_timeout = 0.5,
+        })
+        assert_nil(client:blpop('doesnotexist', 1))
+    end)
 end)
 
 context("Client features", function()
@@ -380,6 +399,14 @@ context("Client features", function()
         })
         assert_not_nil(client.ping)
         assert_true(client:ping())
+    end)
+
+    test("Change the socket timeout (client:set_timeout)", function()
+        client:set_timeout(0.2)
+
+        assert_error_message('timeout', function()
+            client:blpop('doesnotexist', 1)
+        end)
     end)
 
     test("Generate missing commands on the fly", function()

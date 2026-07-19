@@ -52,6 +52,17 @@ local client = redis.connect({
 })
 ```
 
+The `timeout` parameter sets the socket timeout in seconds for every operation,
+including connecting. Use `connect_timeout` to limit only the connection step.
+The timeout can be changed later with `client:set_timeout(seconds)`, for
+example to disable it before a blocking command:
+
+``` lua
+local client = redis.connect({ host = '127.0.0.1', connect_timeout = 5 })
+client:set_timeout(nil)
+client:blpop('queue', 0)
+```
+
 It is also possible to connect to a local redis instance using __UNIX domain sockets__
 if LuaSocket has been compiled with them enabled (unfortunately this is not the default):
 

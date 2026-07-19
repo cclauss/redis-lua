@@ -474,6 +474,10 @@ local client_prototype = setmetatable({}, {
 client_prototype.write_request = multibulk_request
 client_prototype.read_response = response_reader
 
+client_prototype.set_timeout = function(client, timeout)
+    client.network.socket:settimeout(timeout)
+end
+
 client_prototype.raw_command = function(client, ...)
     client:write_request(table.remove(..., 1), ...)
     return client:read_response()
@@ -801,12 +805,19 @@ end
 
 local function connect_tcp(socket, parameters)
     local host, port = parameters.host, tonumber(parameters.port)
-    if parameters.timeout then
-        socket:settimeout(parameters.timeout, 't')
+    local connect_timeout = parameters.connect_timeout or parameters.timeout
+    if connect_timeout then
+        socket:settimeout(connect_timeout, 't')
     end
     local ok, err = socket:connect(host, port)
     if not ok then
         redis.error('could not connect to '..host..':'..port..' ['..err..']')
+    end
+    if parameters.connect_timeout then
+        -- settimeout() persists on the socket, so restore the timeout
+        -- meant for reads and writes once the connection is established
+        socket:settimeout(parameters.timeout, 'b')
+        socket:settimeout(parameters.timeout, 't')
     end
     socket:setoption('tcp-nodelay', parameters.tcp_nodelay)
     return socket
@@ -866,6 +877,8 @@ function redis.connect(...)
                             parameters.tcp_nodelay = parse_boolean(v)
                         elseif k == 'timeout' then
                             parameters.timeout = tonumber(v)
+                        elseif k == 'connect_timeout' or k == 'connect-timeout' then
+                            parameters.connect_timeout = tonumber(v)
                         end
                     end
                 end
