@@ -11,6 +11,7 @@ redis-lua is a pure Lua client library for the Redis advanced key-value database
 - Redis transactions (MULTI/EXEC) with CAS
 - User-definable commands
 - UNIX domain sockets (when available in LuaSocket)
+- TLS connections (when LuaSec is installed)
 
 ## Compatibility ##
 
@@ -62,6 +63,31 @@ local client = redis.connect({ host = '127.0.0.1', connect_timeout = 5 })
 client:set_timeout(nil)
 client:blpop('queue', 0)
 ```
+
+Connections can be encrypted with __TLS__ when the optional
+[LuaSec](https://github.com/lunarmodules/luasec) module is installed. Use the
+`rediss://` scheme or set the `tls` parameter, which accepts `true` or a table
+of LuaSec options. The server certificate is verified against the system CA
+store by default, or against `cafile` when given:
+
+``` lua
+local client = redis.connect('rediss://127.0.0.1:6390')
+
+local client = redis.connect({
+    host = '127.0.0.1',
+    port = 6390,
+    tls  = { cafile = '/path/to/ca.crt' },
+})
+
+local client = redis.connect({
+    host = '127.0.0.1',
+    port = 6390,
+    tls  = { verify = 'none' },    -- disable certificate verification
+})
+```
+
+Note that LuaSec verifies the certificate chain but does not check that the
+certificate matches the hostname you connected to.
 
 It is also possible to connect to a local redis instance using __UNIX domain sockets__
 if LuaSocket has been compiled with them enabled (unfortunately this is not the default):
@@ -176,6 +202,7 @@ client.get = redis.command('get')           -- client level
 
 - [Lua 5.1 and 5.2](http://www.lua.org/) or [LuaJIT 2.0](http://luajit.org/)
 - [LuaSocket 2.0](http://www.tecgraf.puc-rio.br/~diego/professional/luasocket/)
+- [LuaSec](https://github.com/lunarmodules/luasec) (optional, required for TLS connections)
 - [Busted](https://lunarmodules.github.io/busted/) (required to run the test suite)
 
 Run the test suite against a local Redis instance with:

@@ -336,6 +336,52 @@ context("Client initialization", function()
     end)
 end)
 
+local tls_settings = {
+    port   = tonumber(os.getenv('REDIS_TLS_PORT')),
+    cafile = os.getenv('REDIS_TLS_CAFILE'),
+}
+
+if tls_settings.port then
+    context("TLS connections", function()
+        test("Connect with TLS parameters", function()
+            local client = redis.connect({
+                host = settings.host,
+                port = tls_settings.port,
+                tls  = { cafile = tls_settings.cafile },
+            })
+
+            assert_true(client:ping())
+            assert_true(client:set('tls', 'works'))
+            assert_equal(client:get('tls'), 'works')
+
+            local replies = client:pipeline(function(p)
+                p:echo('over')
+                p:echo('tls')
+            end)
+            assert_equal(replies[1], 'over')
+            assert_equal(replies[2], 'tls')
+        end)
+
+        test("Verify the server certificate by default", function()
+            -- the test server uses a self-signed CA, so the rediss scheme
+            -- must fail the handshake against the default CA store
+            assert_error_message('TLS handshake failed', function()
+                redis.connect('rediss://'..settings.host..':'..tls_settings.port)
+            end)
+        end)
+
+        test("Verification can be disabled", function()
+            local client = redis.connect({
+                host = settings.host,
+                port = tls_settings.port,
+                tls  = { verify = 'none' },
+            })
+
+            assert_true(client:ping())
+        end)
+    end)
+end
+
 context("Client features", function()
     before(function()
         client, version = utils.create_client(settings)

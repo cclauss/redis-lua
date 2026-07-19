@@ -44,6 +44,19 @@ jobs:
         run: |
           luarocks install busted
           luarocks install luasocket
+          luarocks install luasec
+
+      - name: Start a TLS-enabled Redis server
+        run: |
+          ./test/gen-tls-certs.sh tls
+          docker run -d --name redis-tls --network host \
+            -v "$PWD/tls:/tls:ro" \
+            redis:7-alpine redis-server --port 0 --tls-port 6390 \
+            --tls-cert-file /tls/server.crt --tls-key-file /tls/server.key \
+            --tls-ca-cert-file /tls/ca.crt --tls-auth-clients no
 
       - name: Run test suite
         run: busted
+        env:
+          REDIS_TLS_PORT: 6390
+          REDIS_TLS_CAFILE: tls/ca.crt

@@ -803,6 +803,63 @@ end
 
 -- ############################################################################
 
+local function wrap_tls(socket, parameters, connect_timeout)
+    local loaded, ssl = pcall(require, 'ssl')
+    if not loaded then
+        redis.error('TLS connections require the luasec module to be installed')
+    end
+
+    local config = {
+        mode     = 'client',
+        protocol = 'any',
+        verify   = 'peer',
+        options  = 'all',
+    }
+    if type(parameters.tls) == 'table' then
+        for k, v in pairs(parameters.tls) do
+            config[k] = v
+        end
+    end
+
+    -- luasec does not load the system CA store on its own, so probe the
+    -- usual locations when verification is enabled but no CA is configured
+    if config.verify ~= 'none' and not config.cafile and not config.capath then
+        local ca_locations = {
+            '/etc/ssl/certs/ca-certificates.crt', -- Debian, Ubuntu, Alpine
+            '/etc/pki/tls/certs/ca-bundle.crt',   -- Fedora, RHEL
+            '/etc/ssl/cert.pem',                  -- macOS, BSD
+        }
+        for _, cafile in ipairs(ca_locations) do
+            local file = io.open(cafile, 'r')
+            if file then
+                file:close()
+                config.cafile = cafile
+                break
+            end
+        end
+    end
+
+    local wrapped, err = ssl.wrap(socket, config)
+    if not wrapped then
+        redis.error('could not initialize TLS: '..tostring(err))
+    end
+
+    if wrapped.sni and parameters.host then
+        wrapped:sni(parameters.host)
+    end
+
+    if connect_timeout then
+        wrapped:settimeout(connect_timeout, 't')
+    end
+
+    local success, handshake_err = wrapped:dohandshake()
+    if not success then
+        redis.error('TLS handshake failed: '..tostring(handshake_err))
+    end
+
+    return wrapped
+end
+
 local function connect_tcp(socket, parameters)
     local host, port = parameters.host, tonumber(parameters.port)
     local connect_timeout = parameters.connect_timeout or parameters.timeout
@@ -813,13 +870,18 @@ local function connect_tcp(socket, parameters)
     if not ok then
         redis.error('could not connect to '..host..':'..port..' ['..err..']')
     end
+    socket:setoption('tcp-nodelay', parameters.tcp_nodelay)
+
+    if parameters.tls then
+        socket = wrap_tls(socket, parameters, connect_timeout)
+    end
+
     if parameters.connect_timeout then
         -- settimeout() persists on the socket, so restore the timeout
         -- meant for reads and writes once the connection is established
         socket:settimeout(parameters.timeout, 'b')
         socket:settimeout(parameters.timeout, 't')
     end
-    socket:setoption('tcp-nodelay', parameters.tcp_nodelay)
     return socket
 end
 
@@ -845,7 +907,8 @@ local function create_connection(parameters)
     else
         if parameters.scheme then
             local scheme = parameters.scheme
-            assert(scheme == 'redis' or scheme == 'tcp', 'invalid scheme: '..scheme)
+            assert(scheme == 'redis' or scheme == 'rediss' or scheme == 'tcp',
+                'invalid scheme: '..scheme)
         end
         perform_connection, socket = connect_tcp, require('socket').tcp
     end
@@ -881,6 +944,9 @@ function redis.connect(...)
                             parameters.connect_timeout = tonumber(v)
                         end
                     end
+                end
+                if parameters.scheme == 'rediss' then
+                    parameters.tls = true
                 end
                 if parameters.user and parameters.user ~= '' then
                     parameters.username = parameters.user
