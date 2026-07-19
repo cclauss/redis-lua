@@ -4,6 +4,16 @@
 
 redis-lua is a pure Lua client library for the Redis advanced key-value database.
 
+This repository is the 3.0 continuation of the original <https://github.com/nrk/redis-lua>.
+
+## Installation ##
+
+The library is published on LuaRocks under the name `redis-lua3`:
+
+``` shell
+luarocks install redis-lua3
+```
+
 ## Main features ##
 
 - Support for Redis >= 1.2
@@ -218,8 +228,9 @@ busted
 ## Links ##
 
 ### Project ###
-- [Source code](http://github.com/nrk/redis-lua/)
-- [Issue tracker](http://github.com/nrk/redis-lua/issues)
+- [Source code](https://github.com/leafo/redis-lua)
+- [Issue tracker](https://github.com/leafo/redis-lua/issues)
+- [Original redis-lua](https://github.com/nrk/redis-lua) by Daniele Alessandri
 
 ### Related ###
 - [Redis](http://redis.io/)

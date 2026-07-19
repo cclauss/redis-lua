@@ -1,8 +1,8 @@
-package = "redis-lua"
+package = "redis-lua3"
 version = "scm-1"
 
 source = {
-   url = "git://github.com/nrk/redis-lua.git"
+   url = "git+https://github.com/leafo/redis-lua.git"
 }
 
 description = {
@@ -10,7 +10,7 @@ description = {
    detailed = [[
       A Lua client library for the redis key value storage system.
    ]],
-   homepage = "http://github.com/nrk/redis-lua",
+   homepage = "https://github.com/leafo/redis-lua",
    license = "MIT/X11"
 }
 
@@ -20,10 +20,8 @@ dependencies = {
 }
 
 build = {
-   type = "none",
-   install = {
-      lua = {
-         redis = "src/redis.lua"
-      }
+   type = "builtin",
+   modules = {
+      redis = "src/redis.lua"
    }
 }
