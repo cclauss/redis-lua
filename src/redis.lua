@@ -869,6 +869,12 @@ function redis.connect(...)
                         end
                     end
                 end
+                if parameters.user and parameters.user ~= '' then
+                    parameters.username = parameters.user
+                end
+                if parameters.scheme ~= 'unix' and parameters.path then
+                    parameters.database = tonumber(parameters.path:match('^/(%d+)$'))
+                end
             else
                 parameters.host = parameters.path
             end
@@ -883,8 +889,22 @@ function redis.connect(...)
         redis.error('invalid type for the commands table')
     end
 
-    local socket = create_connection(merge_defaults(parameters))
+    parameters = merge_defaults(parameters)
+
+    local socket = create_connection(parameters)
     local client = create_client(client_prototype, socket, commands)
+
+    if parameters.password and parameters.password ~= '' then
+        if parameters.username then
+            client:auth(parameters.username, parameters.password)
+        else
+            client:auth(parameters.password)
+        end
+    end
+
+    if parameters.database then
+        client:select(parameters.database)
+    end
 
     return client
 end

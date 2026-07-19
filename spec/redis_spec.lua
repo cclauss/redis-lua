@@ -265,6 +265,38 @@ context("Client initialization", function()
         assert_type(client, 'table')
     end)
 
+    test("Selects the database from the URI path or parameters", function()
+        local seeder = utils.create_client(settings)
+        seeder:set('db_from_uri', 'ok')
+
+        local uri = 'redis://'..settings.host..':'..settings.port..'/'..settings.database
+        assert_equal(redis.connect(uri):get('db_from_uri'), 'ok')
+
+        local client = redis.connect({
+            host     = settings.host,
+            port     = settings.port,
+            database = settings.database,
+        })
+        assert_equal(client:get('db_from_uri'), 'ok')
+    end)
+
+    test("Authenticates from the userinfo in a URI", function()
+        local admin, version = utils.create_client(settings)
+        if version:is('<', '6.0.0') then return end
+
+        admin:acl('setuser', 'redislua_test', 'on', '>letmein', 'allkeys', 'allcommands')
+
+        local authority = settings.host..':'..settings.port
+        local client = redis.connect('redis://redislua_test:letmein@'..authority)
+        assert_equal(client:acl('whoami'), 'redislua_test')
+
+        assert_error_message('WRONGPASS', function()
+            redis.connect('redis://redislua_test:wrongpass@'..authority)
+        end)
+
+        admin:acl('deluser', 'redislua_test')
+    end)
+
     test("Can use an already connected socket", function()
         local connection = require('socket').tcp()
         connection:connect(settings.host, settings.port)

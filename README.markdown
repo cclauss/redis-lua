@@ -35,6 +35,23 @@ local client = redis.connect('127.0.0.1', 6379)
 local response = client:ping()           -- true
 ```
 
+Credentials and a database number can be supplied in a `redis://` URI or in the
+table of connection parameters. The client will automatically send AUTH (with
+ACL username support on Redis >= 6) and SELECT when connecting:
+
+``` lua
+local client = redis.connect('redis://myuser:secret@127.0.0.1:6379/2')
+
+-- equivalent:
+local client = redis.connect({
+    host     = '127.0.0.1',
+    port     = 6379,
+    username = 'myuser',   -- omit to authenticate with the password only
+    password = 'secret',
+    database = 2,
+})
+```
+
 It is also possible to connect to a local redis instance using __UNIX domain sockets__
 if LuaSocket has been compiled with them enabled (unfortunately this is not the default):
 
@@ -73,10 +90,9 @@ local replies = client:pipeline(function(p)
 end)
 ```
 
-An error reply from the server does not abort the pipeline: every command's
-reply is read, and each failed command's slot in `replies` holds a table of
-the form `{ error = message }` instead of a value. Only connection errors
-raise a Lua error.
+When a command in the pipeline fails, the replies of the remaining commands
+are still read. The reply for a failed command is a table of the form
+`{ error = message }`. Only connection errors raise a Lua error.
 
 ### Variadic commands
 
@@ -127,9 +143,10 @@ used without waiting for redis-lua to define them:
 client:unlink('key1', 'key2')       -- works even though redis-lua does not define UNLINK
 ```
 
-Note that this means `client.foo` is never `nil`, even for commands the server
-does not support — a bogus name only fails when the server rejects it. Use
-`rawget(client, 'foo')` to check whether a command has actually been defined.
+Note that this means `client.foo` is never `nil`, even for commands that don't
+exist. Calling a bad command name will only fail once the server rejects it.
+Use `rawget(client, 'foo')` to check whether a command has actually been
+defined.
 
 You can also define new Redis commands or redefine existing ones at module level
 (commands will be available on all client instances) or client level (commands
