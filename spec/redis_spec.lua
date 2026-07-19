@@ -287,7 +287,7 @@ end)
 
 context("Client features", function()
     before(function()
-        client = utils.create_client(settings)
+        client, version = utils.create_client(settings)
     end)
 
     test("Send raw commands", function()
@@ -303,7 +303,7 @@ context("Client features", function()
 
     test("Create a new unbound command object", function()
         local cmd = redis.command('doesnotexist')
-        assert_nil(client.doesnotexist)
+        assert_nil(rawget(client, 'doesnotexist'))
         assert_error(function() cmd(client) end)
 
         local cmd = redis.command('ping', {
@@ -319,18 +319,18 @@ context("Client features", function()
         redis.commands.doesnotexist = nil
         local client3 = utils.create_client(settings)
 
-        assert_nil(client.doesnotexist)
-        assert_not_nil(client2.doesnotexist)
-        assert_nil(client3.doesnotexist)
+        assert_nil(rawget(client, 'doesnotexist'))
+        assert_not_nil(rawget(client2, 'doesnotexist'))
+        assert_nil(rawget(client3, 'doesnotexist'))
     end)
 
     test("Define new commands at client instance level", function()
         client.doesnotexist = redis.command('doesnotexist')
-        assert_not_nil(client.doesnotexist)
+        assert_not_nil(rawget(client, 'doesnotexist'))
         assert_error(function() client:doesnotexist() end)
 
         client.doesnotexist = nil
-        assert_nil(client.doesnotexist)
+        assert_nil(rawget(client, 'doesnotexist'))
 
         client.ping = redis.command('ping')
         assert_not_nil(client.ping)
@@ -348,6 +348,30 @@ context("Client features", function()
         })
         assert_not_nil(client.ping)
         assert_true(client:ping())
+    end)
+
+    test("Generate missing commands on the fly", function()
+        assert_nil(rawget(client, 'unlink'))
+
+        if version:is('>=', '4.0.0') then
+            client:set('metavars', 'foobar')
+            assert_equal(client:unlink('metavars', 'doesnotexist'), 1)
+            assert_not_nil(rawget(client, 'unlink'))
+        end
+
+        assert_error_message('unknown command', function()
+            client:thisisnotacommand()
+        end)
+
+        local replies = client:pipeline(function(p)
+            p:set('pipelined', 'value')
+            p:thisisnotacommand()
+            p:get('pipelined')
+        end)
+
+        assert_true(replies[1])
+        assert_not_nil(replies[2].error:match('unknown command'))
+        assert_equal(replies[3], 'value')
     end)
 
     test("Pipelining commands", function()

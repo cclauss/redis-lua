@@ -456,7 +456,20 @@ end
 
 -- ############################################################################
 
-local client_prototype = {}
+-- Methods missing from the client are generated on the fly as plain
+-- commands and cached, so commands introduced by newer Redis versions
+-- can be called without an explicit definition in redis.commands. Use
+-- rawget() to check whether a command has actually been defined.
+local client_prototype = setmetatable({}, {
+    __index = function(client, name)
+        if type(name) ~= 'string' then
+            return nil
+        end
+        local generated = command(name)
+        rawset(client, name, generated)
+        return generated
+    end,
+})
 
 client_prototype.write_request = multibulk_request
 client_prototype.read_response = response_reader
@@ -487,9 +500,6 @@ client_prototype.pipeline = function(client, block)
     local pipeline = setmetatable({}, {
         __index = function(env, name)
             local cmd = client[name]
-            if not cmd then
-                client.error('unknown redis command: ' .. name, 2)
-            end
             return function(self, ...)
                 local reply = cmd(client, ...)
                 table_insert(parsers, #requests, reply.parser)

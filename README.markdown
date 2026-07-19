@@ -119,9 +119,22 @@ end)
 
 ### Add or replace Redis commands ###
 
-You can define new Redis commands or redefine existing ones at module level (commands
-will be available on all client instances) or client level (commands will be available
-only on that client instance).
+Any method not explicitly defined is automatically sent to the server as a plain
+command of the same name, so commands introduced by newer Redis versions can be
+used without waiting for redis-lua to define them:
+
+```lua
+client:unlink('key1', 'key2')       -- works even though redis-lua does not define UNLINK
+```
+
+Note that this means `client.foo` is never `nil`, even for commands the server
+does not support — a bogus name only fails when the server rejects it. Use
+`rawget(client, 'foo')` to check whether a command has actually been defined.
+
+You can also define new Redis commands or redefine existing ones at module level
+(commands will be available on all client instances) or client level (commands
+will be available only on that client instance), for example to attach custom
+argument serializers or reply parsers.
 
 ```lua
 local redis = require 'redis'
